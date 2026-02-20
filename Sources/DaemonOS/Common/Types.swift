@@ -1,4 +1,4 @@
-// Types.swift - Shared types for Daemon OS
+// Types.swift - Shared types for Daemon OS MCP server
 
 import AXorcist
 import Foundation
