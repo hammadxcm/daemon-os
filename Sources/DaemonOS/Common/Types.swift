@@ -6,7 +6,7 @@ import Foundation
 // MARK: - Version
 
 public enum DaemonOS {
-    public static let version = "3.0.0"
+    public static let version = "1.0.0"
     public static let name = "daemon-os"
 }
 
