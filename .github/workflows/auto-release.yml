@@ -7,9 +7,6 @@ on:
       - 'Sources/**'
       - 'Package.swift'
 
-permissions:
-  contents: write
-
 jobs:
   tag-and-release:
     name: Tag & Release
@@ -18,9 +15,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - name: Select Xcode 26.2 (Swift 6.2)
-        run: sudo xcode-select -s /Applications/Xcode_26.2.app
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
 
       - name: Extract version from source
         id: version
