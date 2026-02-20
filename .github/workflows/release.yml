@@ -52,3 +52,49 @@ jobs:
             daemon-os-${{ github.ref_name }}-macos-universal.tar.gz
             SHA256SUMS
           generate_release_notes: true
+
+      - name: Update Homebrew formula
+        env:
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          VERSION="${{ github.ref_name }}"
+          VERSION_NUM="${VERSION#v}"
+          SHA=$(cat SHA256SUMS | awk '{print $1}')
+          TARBALL="daemon-os-${VERSION}-macos-universal.tar.gz"
+
+          git clone https://x-access-token:${HOMEBREW_TAP_TOKEN}@github.com/hammadxcm/homebrew-daemon-os.git /tmp/homebrew-tap
+          cd /tmp/homebrew-tap
+
+          cat > Formula/daemon-os.rb << FORMULA
+          class DaemonOs < Formula
+            desc "macOS MCP server for AI agent computer-use"
+            homepage "https://github.com/hammadxcm/daemon-os"
+            url "https://github.com/hammadxcm/daemon-os/releases/download/${VERSION}/${TARBALL}"
+            sha256 "${SHA}"
+            version "${VERSION_NUM}"
+            license "MIT"
+
+            def install
+              bin.install "daemon"
+              share.install "DAEMON-MCP.md"
+              (share/"daemon-os/recipes").install Dir["recipes/*.json"]
+            end
+
+            def post_install
+              ohai "Run 'daemon setup' to configure permissions and MCP clients"
+            end
+
+            test do
+              assert_match "${VERSION_NUM}", shell_output("#{bin}/daemon version")
+            end
+          end
+          FORMULA
+
+          # Remove leading whitespace from heredoc
+          sed -i '' 's/^          //' Formula/daemon-os.rb
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Formula/daemon-os.rb
+          git commit -m "Update daemon-os to ${VERSION}"
+          git push
