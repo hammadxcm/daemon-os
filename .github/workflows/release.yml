@@ -1,0 +1,54 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build Universal Binary
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode 16.2
+        run: sudo xcode-select -s /Applications/Xcode_16.2.app
+
+      - name: Build arm64
+        run: swift build -c release --arch arm64
+
+      - name: Build x86_64
+        run: swift build -c release --arch x86_64
+
+      - name: Create universal binary
+        run: |
+          mkdir -p .build/universal
+          lipo -create \
+            .build/arm64-apple-macosx/release/daemon \
+            .build/x86_64-apple-macosx/release/daemon \
+            -output .build/universal/daemon
+
+      - name: Verify universal binary
+        run: file .build/universal/daemon
+
+      - name: Package
+        run: |
+          STAGING="daemon-os-${{ github.ref_name }}"
+          mkdir -p "$STAGING/recipes"
+          cp .build/universal/daemon "$STAGING/"
+          cp DAEMON-MCP.md "$STAGING/"
+          cp recipes/*.json "$STAGING/recipes/"
+          tar czf "$STAGING-macos-universal.tar.gz" "$STAGING"
+          shasum -a 256 "$STAGING-macos-universal.tar.gz" > SHA256SUMS
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            daemon-os-${{ github.ref_name }}-macos-universal.tar.gz
+            SHA256SUMS
+          generate_release_notes: true

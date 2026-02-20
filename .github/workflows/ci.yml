@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build & Test
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode 16.2
+        run: sudo xcode-select -s /Applications/Xcode_16.2.app
+
+      - name: Build (debug)
+        run: swift build
+
+      - name: Build (release)
+        run: swift build -c release
+
+      - name: Run unit tests
+        run: swift test --enable-code-coverage
+
+      - name: Export coverage
+        run: |
+          BIN=$(swift build --show-bin-path)
+          XCTEST=$(find "$BIN" -name '*.xctest' -type d | head -1)
+          PROFDATA=$(find .build -name 'default.profdata' -type f | head -1)
+          if [ -n "$XCTEST" ] && [ -n "$PROFDATA" ]; then
+            xcrun llvm-cov export \
+              "$XCTEST/Contents/MacOS/$(basename "$XCTEST" .xctest)" \
+              -instr-profile "$PROFDATA" \
+              -format lcov \
+              > coverage.lcov
+          fi
+
+      - name: Upload coverage
+        if: hashFiles('coverage.lcov') != ''
+        uses: codecov/codecov-action@v4
+        with:
+          files: coverage.lcov
+          fail_ci_if_error: false
