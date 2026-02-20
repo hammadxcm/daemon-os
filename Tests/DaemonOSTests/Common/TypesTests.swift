@@ -6,9 +6,9 @@ import Testing
 @Suite("Core Types")
 struct TypesTests {
 
-    @Test("DaemonOS version is 1.0.0")
+    @Test("DaemonOS version is 1.0.1")
     func version() {
-        #expect(DaemonOS.version == "1.0.0")
+        #expect(DaemonOS.version == "1.0.1")
     }
 
     @Test("DaemonOS name is daemon-os")
