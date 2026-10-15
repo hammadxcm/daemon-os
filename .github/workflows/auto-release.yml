@@ -7,12 +7,17 @@ on:
       - 'Sources/**'
       - 'Package.swift'
 
+permissions:
+  contents: read
+
 jobs:
   tag-and-release:
     name: Tag & Release
     runs-on: macos-15
     steps:
-      - uses: actions/checkout@v4
+      # persist-credentials is intentionally left enabled: the "Create tag" step
+      # pushes the tag with this PAT (a GITHUB_TOKEN push would not trigger release.yml).
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1 # zizmor: ignore[artipacked]
         with:
           fetch-depth: 0
           token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
@@ -26,8 +31,10 @@ jobs:
 
       - name: Check if tag exists
         id: check
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
         run: |
-          if git rev-parse "v${{ steps.version.outputs.version }}" >/dev/null 2>&1; then
+          if git rev-parse "v${VERSION}" >/dev/null 2>&1; then
             echo "exists=true" >> "$GITHUB_OUTPUT"
           else
             echo "exists=false" >> "$GITHUB_OUTPUT"
@@ -35,8 +42,10 @@ jobs:
 
       - name: Create tag
         if: steps.check.outputs.exists == 'false'
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag "v${{ steps.version.outputs.version }}"
-          git push origin "v${{ steps.version.outputs.version }}"
+          git tag "v${VERSION}"
+          git push origin "v${VERSION}"
