@@ -5,15 +5,18 @@ on:
     tags:
       - 'v*'
 
-permissions:
-  contents: write
+permissions: {}
 
 jobs:
   build:
     name: Build Universal Binary
     runs-on: macos-15
+    permissions:
+      contents: write # create the GitHub Release
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Select Xcode 26.2 (Swift 6.2)
         run: sudo xcode-select -s /Applications/Xcode_26.2.app
@@ -36,8 +39,10 @@ jobs:
         run: file .build/universal/daemon
 
       - name: Package
+        env:
+          REF_NAME: ${{ github.ref_name }}
         run: |
-          STAGING="daemon-os-${{ github.ref_name }}"
+          STAGING="daemon-os-${REF_NAME}"
           mkdir -p "$STAGING/recipes"
           cp .build/universal/daemon "$STAGING/"
           cp DAEMON-MCP.md "$STAGING/"
@@ -46,7 +51,7 @@ jobs:
           shasum -a 256 "$STAGING-macos-universal.tar.gz" > SHA256SUMS
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           files: |
             daemon-os-${{ github.ref_name }}-macos-universal.tar.gz
@@ -56,13 +61,14 @@ jobs:
       - name: Update Homebrew formula
         env:
           HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          REF_NAME: ${{ github.ref_name }}
         run: |
-          VERSION="${{ github.ref_name }}"
+          VERSION="${REF_NAME}"
           VERSION_NUM="${VERSION#v}"
           SHA=$(cat SHA256SUMS | awk '{print $1}')
           TARBALL="daemon-os-${VERSION}-macos-universal.tar.gz"
 
-          git clone https://x-access-token:${HOMEBREW_TAP_TOKEN}@github.com/hammadxcm/homebrew-daemon-os.git /tmp/homebrew-tap
+          git clone "https://x-access-token:${HOMEBREW_TAP_TOKEN}@github.com/hammadxcm/homebrew-daemon-os.git" /tmp/homebrew-tap
           cd /tmp/homebrew-tap
 
           cat > Formula/daemon-os.rb << FORMULA
